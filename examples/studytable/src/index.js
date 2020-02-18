@@ -112,7 +112,7 @@ function App(){
             var fileBuffer = ds.write();
             var message = new MQTT.Message(fileBuffer);
             message.destinationName = "find/studies";
-            console.log("SEND ON " + message.destinationName + " PAYLOAD " + message.payloadString);
+            console.log("SEND ON " + message.destinationName);
             client.send(message);
           }, 1000);
         }catch(err){
@@ -130,8 +130,18 @@ function App(){
     window.open("/editor?studyUID=" + study_id);
   }
 
+  const getStudy = async (study_id) => {
+    var ds = new DicomDict({});
+    ds.upsertTag("0020000D", "UI", study_id);
+    var fileBuffer = ds.write();
+    var message = new MQTT.Message(fileBuffer);
+    message.destinationName = "get/study";
+    console.log("SEND ON " + message.destinationName);
+    client.send(message);
+  }
+
   function handleRowDoubleClick(rowIndex){
-    //activateStudy(studiesState.rows[rowIndex].studyInstanceUID)
+    getStudy(studiesState.rows[rowIndex].studyInstanceUID)
   }
 
   return (
