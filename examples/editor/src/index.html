@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="image-viewer">
+    <meta name="apple-mobile-web-app-title" content="image-viewer">
+    <meta name="theme-color" content="#8B8B8B">
+    <meta name="msapplication-navbutton-color" content="#8B8B8B">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+  </head>
+
+  <body>
+    <div id="outer" style="width: 100%;">
+      <div id="inner_fixed">
+        <text class='tooltext'>Vorbefunde: </text>
+        <select id="dropdown_sr">
+        </select>
+        <a id="reload" href="#">aktualisieren</a>
+      </div>
+     
+      <div style="display: flex">
+        <div class="container">
+          <div id="editor1" class="code-editor"></div>
+        </div>
+        <div class="container">
+          <div id="editor2" class="code-editor"></div>
+        </div>
+      </div>
+    </div>
+  </body>
+  <script src="bundle.js"></script>
+</html>
