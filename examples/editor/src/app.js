@@ -168,11 +168,11 @@ document.getElementById("reload").addEventListener("click", update_oldsr);
     currentoldsr = oldsrs[dropdown_sr.value]
 
     const flask1 = new CodeFlask('#editor1', { 
-        language: 'js',
+        language: 'radlex',
         handleNewLineIndentation: false,
         handleTabs: false,
     });
-    flask1.updateCode("Vorbefund");
+    flask1.updateCode("Befund:\nX Ventrikelsystem");
     if(dropdown_sr.value) flask1.updateCode(oldtext[dropdown_sr.value]);
 
     const flask2 = new CodeFlask('#editor2', { 
@@ -180,7 +180,7 @@ document.getElementById("reload").addEventListener("click", update_oldsr);
         handleNewLineIndentation: false,
         handleTabs: false,
     });
-    flask2.updateCode("Aktueller Befund");
+    flask2.updateCode("Befund:\nX Erweitertes Ventrikelsystem (S10 B20)");
     if(newtext.trim()) flask2.updateCode(newtext.trim());
 
     dropdown_sr.onchange = function(event){

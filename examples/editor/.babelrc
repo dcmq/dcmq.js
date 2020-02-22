@@ -1,0 +1,10 @@
+{
+    "plugins": [
+      ["prismjs", {
+          "languages": ["javascript", "radlex"],
+          "plugins": ["line-numbers"],
+          "theme": "twilight",
+          "css": true
+      }]
+    ]
+  }
