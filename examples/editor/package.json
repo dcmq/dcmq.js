@@ -6,10 +6,14 @@
   "dependencies": {
     "babel-plugin-prismjs": "^2.0.1",
     "codeflask": "file:codeflask",
+    "dcmjs": "file:../../../dcmjs",
+    "dicom-parser": "^1.8.4",
     "html-loader": "^0.4.5",
+    "paho-mqtt": "^1.1.0",
     "regenerator-runtime": "^0.13.3",
     "ts-loader": "^4.0.0",
-    "typescript": "^2.3.4"
+    "typescript": "^2.3.4",
+    "utf8": "^3.0.0"
   },
   "scripts": {
     "build": "webpack --config webpack.config.js",

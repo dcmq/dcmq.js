@@ -2,17 +2,59 @@ import "regenerator-runtime/runtime";
 
 import CodeFlask from 'codeflask';
 
+import MQTT from "paho-mqtt";
+import dicomParser from "dicom-parser";
+import * as dcmjs from 'dcmjs';
+const {  DicomDict, DicomMessage, DicomMetaDictionary } = dcmjs.data;
 import './editor.css';
 
 const url_string = window.location.href
 const localurl = new URL(url_string)
 const study_id = localurl.searchParams.get("studyUID");
 
+var wsbroker = location.hostname;  //mqtt websocket enabled broker
+var wsport = 15675; // port for above
+
+var client = new MQTT.Client(wsbroker, wsport, "/ws",
+  "myclientid_" + parseInt(Math.random() * 100, 10));
+
+client.onConnectionLost = function (responseObject) {
+  console.log("CONNECTION LOST - " + responseObject.errorMessage);
+  client.connect(options);
+};
+
+var options = {
+  timeout: 3,
+  onSuccess: function () {
+    console.log("CONNECTION SUCCESS");
+    client.subscribe('stored/instance', {qos: 1});
+  },
+  onFailure: function (message) {
+    console.log("CONNECTION FAILURE - " + message.errorMessage);
+  }
+};
+
+if (location.protocol == "https:") {
+  options.useSSL = true;
+}
+
+console.log("CONNECT TO " + wsbroker + ":" + wsport);
+client.connect(options);
 
 var newtext = ''
 var oldtext = {}
 var oldsrs = {}
-var currentoldsr = null
+
+window.patient_name = null
+window.patientID = null
+
+var radlex_header_dict = {};
+radlex_header_dict['RID13166'] = 'Klinik'
+radlex_header_dict['RID28482'] = 'Untersuchungsprotokoll'
+radlex_header_dict['RID28483'] = 'Vergleich'
+radlex_header_dict['RID28486'] = 'Befund'
+radlex_header_dict['RID13170'] = 'Beurteilung'
+
 
 function textFromSR(sr){
     let text = ''
@@ -38,6 +80,9 @@ function textFromSR(sr){
 }
 
 function srFromText(text, oldsr){
+    if(Object.entries(oldsr.dict).length === 0){
+        return oldsr
+    }
     let headers = Object.values(radlex_header_dict)
     let regexpstr = headers.join(':|')+':'
     let regexp = new RegExp(regexpstr, 'g')
@@ -49,9 +94,10 @@ function srFromText(text, oldsr){
     for(let i in matched ){
         matched[+i] = matched[+i].slice(0,-1)
     }
-    let content_elements = oldsr['0040A730'].Value
-    let newsr = {}
-    Object.assign(newsr, oldsr);
+    let content_elements = oldsr.dict['0040A730'].Value
+    let newsr = new DicomDict(oldsr.meta)
+    Object.assign(newsr.dict, oldsr.dict);
+    newsr.upsertTag("00080005", "CS", "ISO_IR 192");
     for(let j in content_elements){
         try{
             let type = content_elements[j]['0040A040'].Value[0]
@@ -62,7 +108,7 @@ function srFromText(text, oldsr){
             let header = radlex_header_dict[codevalue]
             let index = matched.indexOf(header)
             if(index > -1){
-                newsr['0040A730'].Value[j]["0040A160"].Value[0] = parts[index+1].trim()
+                newsr['0040A730'].dict.Value[j]["0040A160"].Value[0] = parts[index+1].trim()
             }
         } catch(e){
         }
@@ -70,146 +116,135 @@ function srFromText(text, oldsr){
     return newsr
 }
 
-var radlex_header_dict = {};
-radlex_header_dict['RID13166'] = 'Klinik'
-radlex_header_dict['RID28482'] = 'Untersuchungsprotokoll'
-radlex_header_dict['RID28483'] = 'Vergleich'
-radlex_header_dict['RID28486'] = 'Befund'
-radlex_header_dict['RID13170'] = 'Beurteilung'
 
 const dropdown_sr = document.getElementById("dropdown_sr");
-var dropdown_options = [];
-var sr_template = {};
+var sr_template = new DicomDict({});
 
-async function update_oldsr(){
-    let patient_name = window.patient_name;
-    let patientID = window.patientID;
-    let response = fetch('/api/downloadsr?patientID='+patientID)
-    await (await response).json();
-    let study_res = fetch('/rs/studies?00100010='+patient_name)
-    let study_metadata = await (await study_res).json()
-    console.log(study_metadata)
-    let series_promises = []
-    for(let i in study_metadata){
-        let study_id2 = study_metadata[i]["0020000D"].Value[0]
+function arrayToBuffer(array) {
+    return array.buffer.slice(array.byteOffset, array.byteLength + array.byteOffset)
+}
 
-        series_promises.push(fetch('/rs/studies/'+study_id2+'/series?00080060=SR'))
-    }
-    for(let i in series_promises){
-        const sr_series_metadata = await (await series_promises[i]).json()
-        console.log(sr_series_metadata)
-        for(let k in sr_series_metadata){
-            try{
-                try{
-                    var series_description  = sr_series_metadata[k]['0008103E'].Value[0]
-                    if(series_description == 'PhoenixZIPReport'){
-                        continue
-                    }
-                }catch(e){}
-                
-                let text = sr_series_metadata[k]["00080020"].Value[0];
-                let physician = ''
-                try{
-                    physician = sr_series_metadata[k]["0040A078"].Value[0]["0040A123"].Value[0].Alphabetic + '\n'
-                }catch(e){
-                }
-                let content = textFromSR(sr_series_metadata[k])
-                if(content.length>0 && !(text in oldtext)){
-                    oldtext[text] = physician 
-                    oldtext[text] += content
-                    oldsrs[text] = sr_series_metadata[k]
-                    dropdown_options.push(text)                  
-                }
-            }catch(e){
-                console.log(e)
-            }
+client.onMessageArrived = function (message) {
+    console.log("RECEIVE ON " + message.destinationName);
+    window.bytesin = message.payloadBytes;
+    var ds0 = DicomMessage.readFile(arrayToBuffer(message.payloadBytes));
+    var ds = ds0.dict;
+    if(study_id == ds['0020000D'].Value[0]){
+        window.patientID = ds['00100020'].Value[0];
+        try{
+            window.patient_name = ds['00100010'].Value[0]['Alphabetic']
+        }catch(e){
+            window.patient_name = ds['00100010'].Value[0]
         }
     }
-    dropdown_options.sort().reverse();
-    for(let optiontext of dropdown_options){
-        let option = document.createElement("option");
-        option.text = optiontext;
-        dropdown_sr.add(option);
+    if(flask2.getCode() == "" && study_id == ds['0020000D'].Value[0] && 
+        ds['00080016'].Value[0] == DicomMetaDictionary.sopClassUIDsByName['BasicTextSR'] &&
+        ds['0040A730']){
+        sr_template = ds0;
+        flask2.updateCode(textFromSR(ds));
     }
-    dropdown_sr.sort
+    if(ds['00080016'].Value[0] == DicomMetaDictionary.sopClassUIDsByName['BasicTextSR'] &&
+        ds['0040A730']){
+        try{
+            try{
+                var series_description  = ds['0008103E'].Value[0]
+                if(series_description == 'PhoenixZIPReport'){
+                    return
+                }
+            }catch(e){}
+            
+            let title = ds["00080020"].Value[0];
+            let physician = ''
+            try{
+                physician = ds["0040A078"].Value[0]["0040A123"].Value[0].Alphabetic + '\n'
+            }catch(e){
+            }
+            let content = textFromSR(ds)
+            if(content.length>0){
+                if(!(title in oldtext)){
+                    let option = document.createElement("option");
+                    option.text = title;
+                    dropdown_sr.add(option);  
+                }
+                oldtext[title] = physician 
+                oldtext[title] += content
+                oldsrs[title] = ds0    
+                change_oldtext();          
+            }
+        }catch(e){
+            console.log(e)
+        }
+    }
 };
 
-document.getElementById("reload").addEventListener("click", update_oldsr);
-
-(async () => {
-    if(study_id){
-        
-        let response = fetch('/api/getStudyQuestion?studyUID='+study_id)
-        const rresponse = await response;
-
-        const contentType = rresponse.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-            sr_template = await rresponse.json()
-            newtext = textFromSR(sr_template)
-        } else {
-            newtext = await rresponse.text()
-        }
-
-        let study_res = fetch('/rs/studies?0020000D='+study_id)
-        let study_metadata = await (await study_res).json()
-        if(study_metadata.length > 0){
-            window.patient_name = ''
-            window.patientID = ''
-            try{
-                window.patient_name = study_metadata[0]['00100010'].Value[0]['Alphabetic']
-                window.patientID = study_metadata[0]['00100020'].Value[0]
-            }catch(e){
-                console.log(e)
-            }
-            await update_oldsr()
-        }
+function download_reports(){
+    var ds = new DicomDict({});
+    let patient_name = window.patient_name;
+    let patientID = window.patientID;
+    if(patientID != null){
+        ds.upsertTag("00100020", "LO", patientID);
+    }else{
+        ds.upsertTag("0020000D", "UI", study_id);
     }
+    ds.upsertTag("00080060", "CS", "SR")
+    var fileBuffer = ds.write();
+    var message = new MQTT.Message(fileBuffer);
+    message.destinationName = "download/reports";
+    console.log("SEND ON " + message.destinationName);
+    client.send(message);
+};
 
-    currentoldsr = oldsrs[dropdown_sr.value]
+document.getElementById("reload").addEventListener("click", download_reports);
 
-    const flask1 = new CodeFlask('#editor1', { 
-        language: 'radlex',
-        handleNewLineIndentation: false,
-        handleTabs: false,
-    });
-    flask1.updateCode("Befund:\nX Ventrikelsystem");
-    if(dropdown_sr.value) flask1.updateCode(oldtext[dropdown_sr.value]);
 
-    const flask2 = new CodeFlask('#editor2', { 
-        language: 'radlex',
-        handleNewLineIndentation: false,
-        handleTabs: false,
-    });
-    flask2.updateCode("Befund:\nX Erweitertes Ventrikelsystem (S10 B20)");
-    if(newtext.trim()) flask2.updateCode(newtext.trim());
+const flask1 = new CodeFlask('#editor1', { 
+    language: 'radlex',
+    handleNewLineIndentation: false,
+    handleTabs: false,
+});
+flask1.updateCode("");
+if(dropdown_sr.value) flask1.updateCode(oldtext[dropdown_sr.value]);
 
-    dropdown_sr.onchange = function(event){
-        var selectElement = event.target;
-        var value = selectElement.value;
-        flask1.updateCode(oldtext[value])
-        currentoldsr = oldsrs[value]
+const flask2 = new CodeFlask('#editor2', { 
+    language: 'radlex',
+    handleNewLineIndentation: false,
+    handleTabs: false,
+});
+flask2.updateCode("");
+if(newtext.trim()) flask2.updateCode(newtext.trim());
+
+function change_oldtext(){
+    var selectElement = dropdown_sr;
+    var value = selectElement.value;
+    flask1.updateCode(oldtext[value])
+}
+
+dropdown_sr.onchange = function(event){
+    change_oldtext()
+}
+
+// Save periodically
+var last_saved = '';
+setInterval(function() {
+    var newtext = flask2.getCode();
+    if(newtext == last_saved){
+        return
+    }else{
+        last_saved = newtext;
     }
-
-    // Save periodically
-    setInterval(function() {
-        let newsr = srFromText(flask1.getCode(), sr_template);
-        fetch('/rs/studies', {
-            method: 'POST',
-            headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(newsr)
-        }).then(response =>{
-            return response.json()
-        }).then(response => {
-            console.log(response);
-        })
-    }, 5*1000);
-
-    // Check for unsaved data
-    window.onbeforeunload = function() {
+    let newsr = srFromText(newtext, sr_template);
+    if(Object.entries(newsr.dict).length === 0){
+        return
     }
+    var fileBuffer = newsr.write();
+    var message = new MQTT.Message(fileBuffer);
+    message.destinationName = "stored/instance";
+    console.log("SEND ON " + message.destinationName);
+    client.send(message);
+}, 5*1000);
 
-})()
+
+// Check for unsaved data
+window.onbeforeunload = function() {
+}
 

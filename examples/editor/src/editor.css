@@ -1,14 +1,27 @@
-body {
-    padding: 25px;
+html { 
+    height:100%; 
+}
+body { 
+    height:calc(100% - 26px); 
+    padding: 5px;
+    margin: 0px;
+}
+#outer{
+    height: 100%;
+}
+
+#inner_free{
+    display: flex;
+    height: 100%;
 }
 
 .container {
     width: 50%;
+    height: calc(100% - 11px);
     position: relative;
-    height: 600px;
     border: 1px solid #ccc;
     padding: 0px;
-    margin: 0px;
+    margin: 5px;
 }
 
 .token.important {
@@ -18,4 +31,9 @@ body {
 .token.property {
     font-weight: bold;
     text-decoration: underline;
+}
+
+.codeflask__textarea::selection{
+    background: lightgray;
+    color: lightgray;
 }
