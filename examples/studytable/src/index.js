@@ -75,6 +75,7 @@ function App(){
   client.onMessageArrived = function (message) {
     console.log("RECEIVE ON " + message.destinationName);
     var dataSet = dicomParser.parseDicom(message.payloadBytes);
+    console.log(dataSet);
     var rows = studiesState.rows;
     const row = {
       patientName: dataSet.string('x00100010'), 
@@ -84,7 +85,7 @@ function App(){
       modality: dataSet.string('x00080061'), 
       instances: dataSet.string('x00201208'), 
       server: dataSet.string('x00080054'), 
-      studyInstanceUID: dataSet.string('x0020000D'),
+      studyInstanceUID: dataSet.string('x0020000d'),
     }
     rows.push(row);
     var newState = Object.assign({},studiesState);
@@ -127,7 +128,7 @@ function App(){
   };
   
   const activateStudy = async (study_id) => {
-    window.open("/editor?studyUID=" + study_id);
+    window.open("http://localhost:3000/?studyUID=" + study_id);
   }
 
   const getStudy = async (study_id) => {
@@ -141,7 +142,11 @@ function App(){
   }
 
   function handleRowDoubleClick(rowIndex){
-    getStudy(studiesState.rows[rowIndex].studyInstanceUID)
+    var study_id = studiesState.rows[rowIndex].studyInstanceUID
+    if(study_id){
+      getStudy(studiesState.rows[rowIndex].studyInstanceUID)
+      activateStudy(studiesState.rows[rowIndex].studyInstanceUID)
+    }
   }
 
   return (

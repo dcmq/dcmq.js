@@ -27,7 +27,7 @@ var options = {
   timeout: 3,
   onSuccess: function () {
     console.log("CONNECTION SUCCESS");
-    client.subscribe('stored/instance', {qos: 1});
+    client.subscribe('got/report', {qos: 1});
   },
   onFailure: function (message) {
     console.log("CONNECTION FAILURE - " + message.errorMessage);
@@ -98,6 +98,7 @@ function srFromText(text, oldsr){
     let newsr = new DicomDict(oldsr.meta)
     Object.assign(newsr.dict, oldsr.dict);
     newsr.upsertTag("00080005", "CS", "ISO_IR 192");
+    newsr.upsertTag("00081030", "LO", "Entwurf");
     for(let j in content_elements){
         try{
             let type = content_elements[j]['0040A040'].Value[0]
@@ -108,9 +109,10 @@ function srFromText(text, oldsr){
             let header = radlex_header_dict[codevalue]
             let index = matched.indexOf(header)
             if(index > -1){
-                newsr['0040A730'].dict.Value[j]["0040A160"].Value[0] = parts[index+1].trim()
+                newsr.dict['0040A730'].Value[j]["0040A160"].Value[0] = parts[index+1].trim()
             }
         } catch(e){
+            console.log(e)
         }
     }
     return newsr
@@ -142,37 +144,41 @@ client.onMessageArrived = function (message) {
         ds['0040A730']){
         sr_template = ds0;
         flask2.updateCode(textFromSR(ds));
+        download_reports();
     }
     if(ds['00080016'].Value[0] == DicomMetaDictionary.sopClassUIDsByName['BasicTextSR'] &&
         ds['0040A730']){
         try{
+            var series_description  = ds['0008103E'].Value[0]
+            if(series_description == 'PhoenixZIPReport'){
+                return
+            }
+        }catch(e){}
+        console.log(ds)
+        let title = ds["00080020"].Value[0] + " " + ds["00081030"].Value[0];
+        let physician = '';
+        try{
+            physician = ds["0040A078"].Value[0]["0040A123"].Value[0];
+        }catch(e){
+        }
+        if(typeof physician != "string"){
             try{
-                var series_description  = ds['0008103E'].Value[0]
-                if(series_description == 'PhoenixZIPReport'){
-                    return
-                }
-            }catch(e){}
-            
-            let title = ds["00080020"].Value[0];
-            let physician = ''
-            try{
-                physician = ds["0040A078"].Value[0]["0040A123"].Value[0].Alphabetic + '\n'
+                physician = ds["0040A078"].Value[0]["0040A123"].Value[0].Alphabetic;
             }catch(e){
             }
-            let content = textFromSR(ds)
-            if(content.length>0){
-                if(!(title in oldtext)){
-                    let option = document.createElement("option");
-                    option.text = title;
-                    dropdown_sr.add(option);  
-                }
-                oldtext[title] = physician 
-                oldtext[title] += content
-                oldsrs[title] = ds0    
-                change_oldtext();          
+        }
+        
+        let content = textFromSR(ds)
+        if(content.length>0){
+            if(!(title in oldtext)){
+                let option = document.createElement("option");
+                option.text = title;
+                dropdown_sr.add(option);  
             }
-        }catch(e){
-            console.log(e)
+            oldtext[title] = physician + (physician == '' ? '' : '\n');
+            oldtext[title] += content
+            oldsrs[title] = ds0    
+            change_oldtext();          
         }
     }
 };
@@ -189,7 +195,7 @@ function download_reports(){
     ds.upsertTag("00080060", "CS", "SR")
     var fileBuffer = ds.write();
     var message = new MQTT.Message(fileBuffer);
-    message.destinationName = "download/reports";
+    message.destinationName = "get/reports";
     console.log("SEND ON " + message.destinationName);
     client.send(message);
 };

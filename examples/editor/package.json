@@ -6,7 +6,7 @@
   "dependencies": {
     "babel-plugin-prismjs": "^2.0.1",
     "codeflask": "file:codeflask",
-    "dcmjs": "file:../../../dcmjs",
+    "dcmjs": "file:dcmjs",
     "dicom-parser": "^1.8.4",
     "html-loader": "^0.4.5",
     "paho-mqtt": "^1.1.0",
