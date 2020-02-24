@@ -1,3 +1,7 @@
 [submodule "examples/editor/codeflask"]
 	path = examples/editor/codeflask
 	url = https://github.com/vsaase/codeflask
+[submodule "examples/editor/dcmjs"]
+	path = examples/editor/dcmjs
+	url = https://github.com/vsaase/dcmjs
+	branch = fix_readString_utf8
