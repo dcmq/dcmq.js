@@ -5,7 +5,8 @@ module.exports = {
   entry: "./src/app.js",
   devServer: {
     contentBase: path.resolve(__dirname, 'dist'),
-    port: 3000
+    port: 3000,
+    host: '0.0.0.0'
   },
   output: {
     path: __dirname + "/dist",

@@ -128,7 +128,7 @@ function App(){
   };
   
   const activateStudy = async (study_id) => {
-    window.open("http://localhost:3000/?studyUID=" + study_id);
+    window.open("http://"+location.hostname+":3000/?studyUID=" + study_id);
   }
 
   const getStudy = async (study_id) => {
