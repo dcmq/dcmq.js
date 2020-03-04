@@ -258,8 +258,9 @@ function updateLinebreaks(code, flask){
         let spaceLeft = textareadcwidth;
         for(let j in words){
             if(words[j].length + 1 > spaceLeft){
-                out = out.substring(0,out.length - 1);
-                out += "\n " + words[j] + " ";
+                let nspacesend = (out.match(/ +$/) || [[]])[0].length
+                out = out.substring(0,out.length - nspacesend);
+                out += "\n" + " ".repeat(nspacesend) + words[j] + " ";
                 spaceLeft = textareadcwidth - words[j].length - 2;
             }else{
                 out += words[j] + " ";
@@ -273,6 +274,15 @@ function updateLinebreaks(code, flask){
     }
     if(out != code){
         let cursorend = flask2.elTextarea.selectionEnd
+        cursorend -= (code.substring(0,cursorend).match(/\r?\n /g) || []).length
+        let nbreaks = (out.substring(0,cursorend).match(/\r?\n /g) || []).length
+        cursorend += nbreaks;
+        let nbreaksnew = (out.substring(0,cursorend).match(/\r?\n /g) || []).length
+        while(nbreaksnew > nbreaks){
+            cursorend += nbreaksnew - nbreaks
+            nbreaks = nbreaksnew
+            nbreaksnew = (out.substring(0,cursorend).match(/\r?\n /g) || []).length
+        }
         flask.updateCode(out);
         flask.elTextarea.selectionEnd = cursorend
     }
