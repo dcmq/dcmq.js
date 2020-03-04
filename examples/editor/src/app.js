@@ -220,6 +220,45 @@ const flask2 = new CodeFlask('#editor2', {
 flask2.updateCode("");
 if(newtext.trim()) flask2.updateCode(newtext.trim());
 
+export const innerDimensions = (node) => {
+    var computedStyle = getComputedStyle(node)
+  
+    let width = node.clientWidth // width with padding
+    let height = node.clientHeight // height with padding
+  
+    height -= parseFloat(computedStyle.paddingTop) + parseFloat(computedStyle.paddingBottom)
+    width -= parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight)
+    return { height, width }
+}
+
+flask2.updateCode("Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.");
+
+flask2.onUpdate((code) => {
+    let cwidth = document.getElementById("width_measure100").offsetWidth/100;
+    let textareadcwidth = Math.floor(innerDimensions(flask2.elTextarea).width / cwidth);
+    let blocks = code.split("\n\n");
+    let out = "";
+    for(let i in blocks){
+        let blocktext = blocks[i].replace("\n"," ");
+        let words = blocktext.split(" ");
+        let spaceLeft = textareadcwidth;
+        for(let j in words){
+            if(words[j].length > spaceLeft){
+                out.substring(0,out.length-1);
+                out += "\n" + words[j];
+                spaceLeft = textareadcwidth - words[j].length;
+            }else{
+                out += words[j] + " ";
+                spaceLeft -= words[j].length;
+            }
+        }
+        out += "\n\n";
+    }
+    out = out.substring(0,out.length-2)
+    console.log(out);
+    //flask2.updateCode(out);
+});
+
 function change_oldtext(){
     var selectElement = dropdown_sr;
     var value = selectElement.value;
