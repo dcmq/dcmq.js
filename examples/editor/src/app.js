@@ -7,6 +7,7 @@ import dicomParser from "dicom-parser";
 import * as dcmjs from 'dcmjs';
 const {  DicomDict, DicomMessage, DicomMetaDictionary } = dcmjs.data;
 import './editor.css';
+import './prism-radlex';
 
 const url_string = window.location.href
 const localurl = new URL(url_string)
