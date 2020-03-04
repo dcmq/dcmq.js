@@ -233,31 +233,68 @@ export const innerDimensions = (node) => {
 
 flask2.updateCode("Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.");
 
-flask2.onUpdate((code) => {
+function updateLinebreaks(code, flask){
     let cwidth = document.getElementById("width_measure100").offsetWidth/100;
-    let textareadcwidth = Math.floor(innerDimensions(flask2.elTextarea).width / cwidth);
-    let blocks = code.split("\n\n");
+    let textareadcwidth = Math.floor(innerDimensions(flask.elTextarea).width / cwidth);
+    let blocks = code.replace(/\r?\n([^ ])/g, 'NEWBLOCK$1').split("NEWBLOCK");
     let out = "";
     for(let i in blocks){
-        let blocktext = blocks[i].replace("\n"," ");
+        if(blocks[i].length == 0){
+            continue
+        }
+        let lines = blocks[i].split("\n");
+        let noop = true;
+        for(let j in lines){
+            if(lines[j].length > textareadcwidth){
+                noop = true
+                break;
+            }
+        }
+        if(!noop){
+            continue;
+        }
+        let blocktext = blocks[i].replace(/\r?\n /g, ' ');
         let words = blocktext.split(" ");
         let spaceLeft = textareadcwidth;
         for(let j in words){
-            if(words[j].length > spaceLeft){
-                out.substring(0,out.length-1);
-                out += "\n" + words[j];
-                spaceLeft = textareadcwidth - words[j].length;
+            if(words[j].length + 1 > spaceLeft){
+                out = out.substring(0,out.length - 1);
+                out += "\n " + words[j] + " ";
+                spaceLeft = textareadcwidth - words[j].length - 2;
             }else{
                 out += words[j] + " ";
-                spaceLeft -= words[j].length;
+                spaceLeft -= words[j].length + 1;
             }
+        } 
+        out = out.substring(0,out.length - 1);
+        if(i < blocks.length - 1){
+            out += "\n";
         }
-        out += "\n\n";
     }
-    out = out.substring(0,out.length-2)
-    console.log(out);
-    //flask2.updateCode(out);
+    if(out != code){
+        let cursorend = flask2.elTextarea.selectionEnd
+        flask.updateCode(out);
+        flask.elTextarea.selectionEnd = cursorend
+    }
+}
+
+flask2.onUpdate((code) => {
+    updateLinebreaks(code, flask2);
 });
+flask1.onUpdate((code) => {
+    updateLinebreaks(code, flask1);
+});
+
+window.addEventListener('resize', function(e){
+    updateLinebreaks(flask1.getCode(), flask1);
+    updateLinebreaks(flask2.getCode(), flask2);
+});
+
+document.addEventListener('copy', function(e){
+    var text = window.getSelection().toString().replace(/\r?\n /g, ' ');
+    e.clipboardData.setData('text/plain', text);
+    e.preventDefault();
+  });
 
 function change_oldtext(){
     var selectElement = dropdown_sr;
