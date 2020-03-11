@@ -8,6 +8,7 @@ import * as dcmjs from 'dcmjs';
 const {  DicomDict, DicomMessage, DicomMetaDictionary } = dcmjs.data;
 import './editor.css';
 import './prism-radlex';
+import * as Diff from 'diff';
 
 const url_string = window.location.href
 const localurl = new URL(url_string)
@@ -232,6 +233,7 @@ export const innerDimensions = (node) => {
 }
 
 flask2.updateCode("Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.");
+var flask2code = flask2.getCode();
 
 function updateLinebreaks(code, flask){
     let cwidth = document.getElementById("width_measure100").offsetWidth/100;
@@ -274,15 +276,27 @@ function updateLinebreaks(code, flask){
     }
     if(out != code){
         let cursorend = flask2.elTextarea.selectionEnd
-        cursorend -= (code.substring(0,cursorend).match(/\r?\n /g) || []).length
-        let nbreaks = (out.substring(0,cursorend).match(/\r?\n /g) || []).length
-        cursorend += nbreaks;
-        let nbreaksnew = (out.substring(0,cursorend).match(/\r?\n /g) || []).length
-        while(nbreaksnew > nbreaks){
-            cursorend += nbreaksnew - nbreaks
-            nbreaks = nbreaksnew
-            nbreaksnew = (out.substring(0,cursorend).match(/\r?\n /g) || []).length
-        }
+        var diff = Diff.diffChars(code, out)
+        let cursorendtemp = 0
+        diff.forEach(function(part){
+            // green for additions, red for deletions
+            // grey for common parts
+            cursorendtemp += part.count
+            console.log(part)
+            if(part.added && part.value.indexOf("\n") == -1){
+                cursorend = cursorendtemp
+            }
+          });
+        // cursorend -= (code.substring(0,cursorend).match(/\r?\n /g) || []).length
+        // let nbreaks = (out.substring(0,cursorend).match(/\r?\n /g) || []).length
+        // cursorend += nbreaks;
+        // let nbreaksnew = (out.substring(0,cursorend).match(/\r?\n /g) || []).length
+        // while(nbreaksnew > nbreaks){
+        //     cursorend += nbreaksnew - nbreaks
+        //     nbreaks = nbreaksnew
+        //     nbreaksnew = (out.substring(0,cursorend).match(/\r?\n /g) || []).length
+        // }
+        
         flask.updateCode(out);
         flask.elTextarea.selectionEnd = cursorend
     }

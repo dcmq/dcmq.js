@@ -7,6 +7,7 @@
     "codeflask": "^1.4.1",
     "dcmjs": "file:dcmjs",
     "dicom-parser": "^1.8.4",
+    "diff": "^4.0.2",
     "html-loader": "^0.4.5",
     "paho-mqtt": "^1.1.0",
     "regenerator-runtime": "^0.13.3",
