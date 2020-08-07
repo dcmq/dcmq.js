@@ -145,7 +145,7 @@ function App(){
     var study_id = studiesState.rows[rowIndex].studyInstanceUID
     if(study_id){
       getStudy(studiesState.rows[rowIndex].studyInstanceUID)
-      activateStudy(studiesState.rows[rowIndex].studyInstanceUID)
+      //activateStudy(studiesState.rows[rowIndex].studyInstanceUID)
     }
   }
 
